@@ -374,9 +374,10 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
 
     beforeAll(() => {
       // Use the MLX sidecar for tests to avoid downloading/loading the large GGUF generate model.
+      // Keep this portable (no absolute paths).
       process.env.QMD_QUERY_EXPAND_BACKEND = "mlx";
-      process.env.QMD_MLX_PYTHON = process.env.QMD_MLX_PYTHON || "/Users/dgilperez/src/happyberg/qmd/finetune-mlx/.venv/bin/python";
-      process.env.QMD_MLX_EXPAND_SCRIPT = process.env.QMD_MLX_EXPAND_SCRIPT || "/Users/dgilperez/src/happyberg/qmd/scripts/mlx_expand.py";
+      process.env.QMD_MLX_PYTHON = process.env.QMD_MLX_PYTHON || process.env.PYTHON || "python3";
+      process.env.QMD_MLX_EXPAND_SCRIPT = process.env.QMD_MLX_EXPAND_SCRIPT || "scripts/mlx_expand.py";
       process.env.QMD_MLX_TIMEOUT_MS = process.env.QMD_MLX_TIMEOUT_MS || "60000";
     });
 
