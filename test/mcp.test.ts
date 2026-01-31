@@ -202,7 +202,16 @@ import type { RankedResult } from "../src/store";
 // =============================================================================
 
 describe("MCP Server", () => {
+  const prevBackend = process.env.QMD_QUERY_EXPAND_BACKEND;
+  const prevPy = process.env.QMD_MLX_PYTHON;
+  const prevScript = process.env.QMD_MLX_EXPAND_SCRIPT;
+
   beforeAll(async () => {
+    // Use MLX sidecar for query expansion in tests to avoid downloading/loading large GGUF generate models.
+    process.env.QMD_QUERY_EXPAND_BACKEND = "mlx";
+    process.env.QMD_MLX_PYTHON = process.env.QMD_MLX_PYTHON || "/Users/dgilperez/src/happyberg/qmd/finetune-mlx/.venv/bin/python";
+    process.env.QMD_MLX_EXPAND_SCRIPT = process.env.QMD_MLX_EXPAND_SCRIPT || "/Users/dgilperez/src/happyberg/qmd/scripts/mlx_expand.py";
+    process.env.QMD_MLX_TIMEOUT_MS = process.env.QMD_MLX_TIMEOUT_MS || "60000";
     // LlamaCpp uses node-llama-cpp for local model inference (no HTTP mocking needed)
     // Use shared singleton to avoid creating multiple instances with separate GPU resources
     getDefaultLlamaCpp();
@@ -251,6 +260,16 @@ describe("MCP Server", () => {
     } catch {}
 
     delete process.env.QMD_CONFIG_DIR;
+
+    // Restore MLX env overrides
+    if (prevBackend === undefined) delete process.env.QMD_QUERY_EXPAND_BACKEND;
+    else process.env.QMD_QUERY_EXPAND_BACKEND = prevBackend;
+
+    if (prevPy === undefined) delete process.env.QMD_MLX_PYTHON;
+    else process.env.QMD_MLX_PYTHON = prevPy;
+
+    if (prevScript === undefined) delete process.env.QMD_MLX_EXPAND_SCRIPT;
+    else process.env.QMD_MLX_EXPAND_SCRIPT = prevScript;
   });
 
   // ===========================================================================

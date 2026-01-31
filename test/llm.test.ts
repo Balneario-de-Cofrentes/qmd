@@ -445,6 +445,29 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
   });
 
   describe("expandQuery", () => {
+    const prevBackend = process.env.QMD_QUERY_EXPAND_BACKEND;
+    const prevPy = process.env.QMD_MLX_PYTHON;
+    const prevScript = process.env.QMD_MLX_EXPAND_SCRIPT;
+
+    beforeAll(() => {
+      // Use the MLX sidecar for tests to avoid downloading/loading the large GGUF generate model.
+      process.env.QMD_QUERY_EXPAND_BACKEND = "mlx";
+      process.env.QMD_MLX_PYTHON = process.env.QMD_MLX_PYTHON || "/Users/dgilperez/src/happyberg/qmd/finetune-mlx/.venv/bin/python";
+      process.env.QMD_MLX_EXPAND_SCRIPT = process.env.QMD_MLX_EXPAND_SCRIPT || "/Users/dgilperez/src/happyberg/qmd/scripts/mlx_expand.py";
+      process.env.QMD_MLX_TIMEOUT_MS = process.env.QMD_MLX_TIMEOUT_MS || "60000";
+    });
+
+    afterAll(() => {
+      if (prevBackend === undefined) delete process.env.QMD_QUERY_EXPAND_BACKEND;
+      else process.env.QMD_QUERY_EXPAND_BACKEND = prevBackend;
+
+      if (prevPy === undefined) delete process.env.QMD_MLX_PYTHON;
+      else process.env.QMD_MLX_PYTHON = prevPy;
+
+      if (prevScript === undefined) delete process.env.QMD_MLX_EXPAND_SCRIPT;
+      else process.env.QMD_MLX_EXPAND_SCRIPT = prevScript;
+    });
+
     test("returns query expansions with correct types", async () => {
       const result = await llm.expandQuery("test query");
 

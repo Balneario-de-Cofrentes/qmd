@@ -2379,8 +2379,9 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
       expect(q.text).not.toBe("test query"); // original excluded
     }
 
+    mockExpand.mockRestore();
     await cleanupTestDb(store);
-  }, 30000);
+  });
 
   test("expandQuery caches results as JSON with types", async () => {
     const store = await createTestStore();
@@ -2394,11 +2395,21 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
     expect(queries1).toEqual(queries2);
     expect(queries2[0]?.type).toBeDefined();
 
+    mockExpand.mockRestore();
     await cleanupTestDb(store);
-  }, 30000);
+  });
 
   test("rerank scores documents", async () => {
     const store = await createTestStore();
+
+    // Avoid downloading/initializing large rerank GGUFs during unit tests.
+    const mockRerank = spyOn(LlamaCpp.prototype, "rerank").mockResolvedValue({
+      model: "test",
+      results: [
+        { file: "doc1.md", index: 0, score: 0.9 },
+        { file: "doc2.md", index: 1, score: 0.1 },
+      ],
+    });
 
     const docs = [
       { file: "doc1.md", text: "Relevant content about the topic" },
@@ -2407,14 +2418,19 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
 
     const results = await store.rerank("topic", docs);
     expect(results).toHaveLength(2);
-    // LlamaCpp reranker returns relevance scores
     expect(results[0]!.score).toBeGreaterThan(0);
 
+    mockRerank.mockRestore();
     await cleanupTestDb(store);
   });
 
   test("rerank caches results", async () => {
     const store = await createTestStore();
+
+    const mockRerank = spyOn(LlamaCpp.prototype, "rerank").mockResolvedValue({
+      model: "test",
+      results: [{ file: "doc1.md", index: 0, score: 0.5 }],
+    });
 
     const docs = [{ file: "doc1.md", text: "Content for caching test" }];
 
@@ -2425,6 +2441,7 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
 
     expect(results).toHaveLength(1);
 
+    mockRerank.mockRestore();
     await cleanupTestDb(store);
   });
 });
