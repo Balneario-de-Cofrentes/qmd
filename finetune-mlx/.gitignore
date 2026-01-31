@@ -1,26 +1,21 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-.env
-
-# Training artifacts
+# Training artifacts (large files)
 adapters/
 models/
+exports/merged/
+exports/*.gguf
+
+# Keep Modelfiles (small, useful)
+!exports/*.Modelfile
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+*.nohup.log
+
+# Data (downloaded separately)
 data/
-exports/
-checkpoints/
-*.safetensors
-*.gguf
-
-# MLX cache
-.mlx_cache/
-
-# OS
-.DS_Store
-
-# IDE
-.vscode/
-.idea/
+eval_results.json
