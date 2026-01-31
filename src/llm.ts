@@ -968,9 +968,17 @@ export class LlamaCpp implements LLM {
 
   private async expandQueryWithMlxSidecar(query: string): Promise<string> {
     // Default to the script shipped in-repo. Override if needed.
-    const script = process.env.QMD_MLX_EXPAND_SCRIPT || join(process.cwd(), "scripts", "mlx_expand.py");
+    // NOTE: Keep env usage portable by defaulting to a relative script path.
+    const script = process.env.QMD_MLX_EXPAND_SCRIPT || "scripts/mlx_expand.py";
     const python = process.env.QMD_MLX_PYTHON || process.env.PYTHON || "python3";
     const timeoutMs = Number.parseInt(process.env.QMD_MLX_TIMEOUT_MS || "20000", 10);
+
+    if (!existsSync(script)) {
+      throw new Error(
+        `MLX expand script not found at: ${script}. ` +
+        `Set QMD_MLX_EXPAND_SCRIPT (default: scripts/mlx_expand.py) or run from the qmd repo root.`
+      );
+    }
 
     const res = spawnSync(python, [script, query], {
       encoding: "utf8",
