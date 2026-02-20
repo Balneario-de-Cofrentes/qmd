@@ -4,6 +4,15 @@ set -euo pipefail
 
 # Find node - prefer PATH, fallback to known locations
 find_node() {
+  : "${HOME:=$(eval echo ~)}"
+
+  # Prefer mise shim (respects .node-version / .tool-versions)
+  local mise_shim="$HOME/.local/share/mise/shims/node"
+  if [[ -x "$mise_shim" ]]; then
+    echo "$mise_shim"
+    return 0
+  fi
+
   if command -v node &>/dev/null; then
     local ver=$(node --version 2>/dev/null | sed 's/^v//' || echo "0")
     local major="${ver%%.*}"
@@ -13,13 +22,9 @@ find_node() {
     fi
   fi
 
-  # Fallback: derive paths (need HOME)
-  : "${HOME:=$(eval echo ~)}"
-
   # Check known locations
   local candidates=(
     "$HOME/.local/share/mise/installs/node/latest/bin/node"
-    "$HOME/.local/share/mise/shims/node"
     "$HOME/.asdf/shims/node"
     "/opt/homebrew/bin/node"
     "/usr/local/bin/node"
