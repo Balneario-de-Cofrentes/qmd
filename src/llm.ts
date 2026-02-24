@@ -504,17 +504,28 @@ export class LlamaCpp implements LLM {
       // (likely a binary/build config issue in node-llama-cpp).
       // @ts-expect-error node-llama-cpp API compat
       const gpuTypes = await getLlamaGpuTypes();
+      // Allow overriding GPU selection (useful for debugging / stability)
+      // Values: "auto"|"cpu"|"false"|"cuda"|"metal"|"vulkan"
+      const gpuOverrideRaw = (process.env.QMD_LLAMA_GPU || "auto").toLowerCase();
+      const gpuOverride =
+        gpuOverrideRaw === "cpu" || gpuOverrideRaw === "false"
+          ? false
+          : (gpuOverrideRaw === "cuda" || gpuOverrideRaw === "metal" || gpuOverrideRaw === "vulkan"
+              ? (gpuOverrideRaw as "cuda" | "metal" | "vulkan")
+              : "auto");
+
       // Prefer CUDA > Metal > Vulkan > CPU
       const preferred = (["cuda", "metal", "vulkan"] as const).find(g => gpuTypes.includes(g));
+      const selectedGpu = gpuOverride === "auto" ? preferred : gpuOverride;
 
       let llama: Llama;
-      if (preferred) {
+      if (selectedGpu) {
         try {
-          llama = await getLlama({ gpu: preferred, logLevel: LlamaLogLevel.error });
+          llama = await getLlama({ gpu: selectedGpu, logLevel: LlamaLogLevel.error });
         } catch {
           llama = await getLlama({ gpu: false, logLevel: LlamaLogLevel.error });
           process.stderr.write(
-            `QMD Warning: ${preferred} reported available but failed to initialize. Falling back to CPU.\n`
+            `QMD Warning: ${selectedGpu} reported/forced but failed to initialize. Falling back to CPU.\n`
           );
         }
       } else {
@@ -1195,7 +1206,8 @@ export class LlamaCpp implements LLM {
     // Note: llama.dispose() can hang indefinitely, so we use a timeout
     if (this.llama) {
       const disposePromise = this.llama.dispose();
-      const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 1000));
+      const timeoutMs = Number.parseInt(process.env.QMD_LLAMA_DISPOSE_TIMEOUT_MS || "10000", 10);
+      const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
       await Promise.race([disposePromise, timeoutPromise]);
     }
 
