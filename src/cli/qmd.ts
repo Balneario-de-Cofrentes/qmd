@@ -2644,6 +2644,12 @@ const isMain = argv1 === __filename
   || argv1?.endsWith("/qmd.js")
   || (argv1 != null && realpathSync(argv1) === __filename);
 if (isMain) {
+  // Handle broken pipe when output is piped to commands like `head`.
+  // Without this, Node throws an unhandled EPIPE error when the reader closes early.
+  process.stdout.on("error", (err: any) => {
+    if (err?.code === "EPIPE") process.exit(0);
+    throw err;
+  });
   const cli = parseCLI();
 
   if (cli.values.version) {
