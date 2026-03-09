@@ -102,6 +102,14 @@ import { getEmbeddedQmdSkillContent, getEmbeddedQmdSkillFiles } from "../embedde
 // Tests must set INDEX_PATH or use createStore() with explicit path
 enableProductionMode();
 
+// Gracefully handle EPIPE when stdout is closed by a pipe consumer (e.g. `qmd status | head`).
+// Node will throw on write after `head` exits; for CLI tools this should be a clean exit.
+process.stdout.on("error", (err: any) => {
+  if (err?.code === "EPIPE") {
+    process.exit(0);
+  }
+});
+
 // =============================================================================
 // Store/DB lifecycle (no legacy singletons in store.ts)
 // =============================================================================
