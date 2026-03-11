@@ -547,6 +547,7 @@ export class LlamaCpp implements LLM {
    */
   private async ensureLlama(): Promise<Llama> {
     if (!this.llama) {
+<<<<<<< HEAD
       const llama = await getLlama({
         // attempt to build
         build: "autoAttempt",
@@ -554,6 +555,42 @@ export class LlamaCpp implements LLM {
       });
 
       if (llama.gpu === false) {
+=======
+      // Detect available GPU types and use the best one.
+      // We can't rely on gpu:"auto" — it returns false even when CUDA is available
+      // (likely a binary/build config issue in node-llama-cpp).
+      // @ts-expect-error node-llama-cpp API compat
+      const gpuTypes = await getLlamaGpuTypes();
+      // Allow overriding GPU selection (useful for debugging / stability)
+      // Values: "auto"|"cpu"|"false"|"cuda"|"metal"|"vulkan"
+      const gpuOverrideRaw = (process.env.QMD_LLAMA_GPU || "auto").toLowerCase();
+      const gpuOverride =
+        gpuOverrideRaw === "cpu" || gpuOverrideRaw === "false"
+          ? false
+          : (gpuOverrideRaw === "cuda" || gpuOverrideRaw === "metal" || gpuOverrideRaw === "vulkan"
+              ? (gpuOverrideRaw as "cuda" | "metal" | "vulkan")
+              : "auto");
+
+      // Prefer CUDA > Metal > Vulkan > CPU
+      const preferred = (["cuda", "metal", "vulkan"] as const).find(g => gpuTypes.includes(g));
+      const selectedGpu = gpuOverride === "auto" ? preferred : gpuOverride;
+
+      let llama: Llama;
+      if (selectedGpu) {
+        try {
+          llama = await getLlama({ gpu: selectedGpu, logLevel: LlamaLogLevel.error });
+        } catch {
+          llama = await getLlama({ gpu: false, logLevel: LlamaLogLevel.error });
+          process.stderr.write(
+            `QMD Warning: ${selectedGpu} reported/forced but failed to initialize. Falling back to CPU.\n`
+          );
+        }
+      } else {
+        llama = await getLlama({ gpu: false, logLevel: LlamaLogLevel.error });
+      }
+
+      if (!llama.gpu) {
+>>>>>>> 89ad595 (auto: snapshot 2026-02-24 10:23)
         process.stderr.write(
           "QMD Warning: no GPU acceleration, running on CPU (slow). Run 'qmd status' for details.\n"
         );
@@ -1279,7 +1316,8 @@ export class LlamaCpp implements LLM {
     // Note: llama.dispose() can hang indefinitely, so we use a timeout
     if (this.llama) {
       const disposePromise = this.llama.dispose();
-      const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 1000));
+      const timeoutMs = Number.parseInt(process.env.QMD_LLAMA_DISPOSE_TIMEOUT_MS || "10000", 10);
+      const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
       await Promise.race([disposePromise, timeoutPromise]);
     }
 
